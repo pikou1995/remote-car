@@ -4,6 +4,11 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>remote car</title>
+  <style>
+    .container {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
@@ -35,7 +40,8 @@
     <div id="video-container" class="container">
       <div class="d-flex justify-content-center align-items-center flex-column">
         <div class="p5 embed-responsive embed-responsive-16by9 position-relative">
-          <video muted id="video" class="embed-responsive-item" autoplay="true"></video>
+          <video muted id="video" class="embed-responsive-item" autoplay></video>
+          <button id="audio-btn">打开声音</button>
         </div>
       </div>
     </div>

@@ -12,7 +12,9 @@ window.onbeforeunload = function () {
 function attachStreamToVideoElement(pc, videoElem) {
   console.log('Attaching stream...');
   var srcStream = new MediaStream();
-  srcStream.addTrack(pc.getReceivers()[0].track);
+  pc.getReceivers().forEach(receiver => {
+    srcStream.addTrack(receiver.track);
+  })
   videoElem.srcObject = srcStream;
 }
 
@@ -53,7 +55,7 @@ function createNewPeerConnection() {
       if (peerConnectionBad(pc)) {
         if (state === 0) {
           //this means webrtc connection is not possible
-          startMJPEG();
+          alert('webrtc connection is not possible')
         }
         if (state !== 2) {
           showContainer('fail');
@@ -67,7 +69,7 @@ function createNewPeerConnection() {
           isVideoAttached = true;
           attachStreamToVideoElement(pc, document.getElementById('video'));
           cleanup();
-          startVideoFreezeDetection(pc);
+          // startVideoFreezeDetection(pc);
         }
         showContainer('video');
       }
@@ -76,6 +78,7 @@ function createNewPeerConnection() {
     resolve();
   }).then(function () {
     pc.addTransceiver('video', { direction: 'recvonly' });
+    pc.addTransceiver('audio', { direction: 'recvonly' });
     return pc.createOffer()
   }).then(function (offer) {
     return pc.setLocalDescription(offer);
@@ -116,8 +119,6 @@ function createNewPeerConnection() {
     return pc.setRemoteDescription(answer);
   }).catch(function (e) {
     console.error(e);
-    console.log('Unexpected Error: Starting MJPEG stream.')
-    startMJPEG();
   });
   return pc
 }
@@ -200,67 +201,64 @@ function reconnect() {
   backupPeerConnection = createNewPeerConnection();
 }
 
-function startMJPEG() {
-  if (state !== 3) {
-    primaryPeerConnection.close();
-    primaryPeerConnection = null;
-  }
-  document.getElementById('vpn').style.display = 'initial';
-  console.warn('WebRTC does not work! Starting MJPEG streaming.')
-  state = 2;
-
-  var canvas = document.createElement("canvas");
-  var ctx = canvas.getContext('2d');
-  document.getElementById('mjpeg').appendChild(canvas);
-
-  var mjpeg = new Image();
-  mjpeg.id = 'mjpeg-image';
-  mjpeg.src = '/mjpeg';
-  mjpeg.style.visibility = 'hidden';
-  mjpeg.style.position = 'absolute';
-  document.getElementById('mjpeg').appendChild(mjpeg);
-
-  mjpeg.onload = function () {
-    canvas.style.width = mjpeg.width;
-    canvas.style.height = mjpeg.height;
-    canvas.width = mjpeg.width;
-    canvas.height = mjpeg.height;
-    var draw = setInterval(function () {
-      try {
-        ctx.drawImage(mjpeg, 0, 0);
-      } catch (error) {
-        console.error(error);
-        console.warn('Stopping canvas draw.');
-        clearInterval(draw);
-        showContainer('fail');
-      }
-    }, 50);
-  }
-
-  showContainer('mjpeg');
-}
-
 var isSafari = !!navigator.userAgent.match(/Version\/[\d\.]+.*Safari/);
 var iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 var safariOnIos = isSafari && iOS;
 if (window.navigator.userAgent.indexOf("Edge") > -1 || safariOnIos) {
   //state 3 means the client is a Microsoft Edge or Safari on iOS
   state = 3;
-  startMJPEG();
+  alert('not supported')
 } else {
   primaryPeerConnection = createNewPeerConnection();
 }
 
+function throttle(fn, threshhold) {
 
-// car controller
-var ws = new WebSocket('ws://'+ location.host +'/car');
-var isMoving = false;
-ws.onmessage = function() {
-  isMoving = false;
+  // 记录上次执行的时间
+  var last
+
+  // 定时器
+  var timer
+
+  // 默认间隔为 250ms
+  threshhold || (threshhold = 250)
+
+  // 返回的函数，每过 threshhold 毫秒就执行一次 fn 函数
+  return function () {
+
+    // 保存函数调用时的上下文和参数，传递给 fn
+    var context = this
+    var args = arguments
+
+    var now = +new Date()
+
+    // 如果距离上次执行 fn 函数的时间小于 threshhold，那么就放弃
+    // 执行 fn，并重新计时
+    if (last && now < last + threshhold) {
+      clearTimeout(timer)
+
+      // 保证在当前时间区间结束后，再执行一次 fn
+      timer = setTimeout(function () {
+        last = now
+        fn.apply(context, args)
+      }, threshhold)
+
+      // 在时间区间的最开始和到达指定间隔的时候执行一次 fn
+    } else {
+      last = now
+      fn.apply(context, args)
+    }
+  }
 }
 
-window.onkeydown = function (e) {
-  if (isMoving) return;
-  isMoving = true;
+// car controller
+var ws = new WebSocket('ws://' + location.host + '/car');
+
+window.onkeydown = throttle(function (e) {
   ws.send(e.key);
+}, 200);
+
+document.getElementById('audio-btn').onclick = function () {
+  this.remove();
+  document.getElementById('video').muted = false;
 }

@@ -40,14 +40,24 @@ async def websocket_handler(request):
             if msg.data == 'close':
                 await ws.close()
             elif msg.data == 'w':
-                await car.forward(50, .5); 
+                car.forward()
             elif msg.data == 'a':
-                await car.left(50, .5); 
+                car.left()
             elif msg.data == 's':
-                await car.backword(50, .5); 
+                car.backward()
             elif msg.data == 'd':
-                await car.right(50, .5); 
-            await ws.send_str(msg.data + '/answer')
+                car.right()
+            elif msg.data == 'i':
+                car.servo.up()
+            elif msg.data == 'j':
+                car.servo.left()
+            elif msg.data == 'k':
+                car.servo.down()
+            elif msg.data == 'l':
+                car.servo.right()
+            else:
+                car.stop()
+            car.delay_stop(0.3)
         elif msg.type == aiohttp.WSMsgType.ERROR:
             print('ws connection closed with exception %s' %
                   ws.exception())
@@ -82,7 +92,8 @@ if __name__ == '__main__':
         auth.append(BasicAuthMiddleware(
             username=os.environ['username'], password=os.environ['password']))
 
-    app = web.Application(middlewares=auth)
+    # app = web.Application(middlewares=auth)
+    app = web.Application()
     app.on_shutdown.append(on_shutdown)
 
     app.router.add_get('/', index)

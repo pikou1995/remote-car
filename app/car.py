@@ -1,6 +1,6 @@
+from servo import Servo
 import asyncio
 import RPi.GPIO as GPIO
-import time
 
 PWMA = 18
 AIN1 = 22
@@ -12,6 +12,11 @@ BIN2 = 24
 
 
 class Car:
+    delay_stop_handler = None
+    action = 'stop'
+    speed = 0
+    servo: Servo
+
     def __init__(self):
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
@@ -29,62 +34,68 @@ class Car:
         self.R_Motor = GPIO.PWM(PWMB, 100)
         self.R_Motor.start(0)
 
+        self.servo = Servo()
+
+    def set_speed(self, action: str):
+        if self.action != action:
+            self.action = action
+            self.speed = 60
+        elif self.speed == 60:
+            self.speed = 100
+
+        if action == 'stop':
+            self.speed = 0
+        print(self.speed, action)
+
+        self.L_Motor.ChangeDutyCycle(self.speed)
+        self.R_Motor.ChangeDutyCycle(self.speed)
+
     def stop(self):
-        self.L_Motor.ChangeDutyCycle(0)
+        self.delay_stop_handler = None
         GPIO.output(AIN2, False)
         GPIO.output(AIN1, False)
 
-        self.R_Motor.ChangeDutyCycle(0)
         GPIO.output(BIN2, False)
         GPIO.output(BIN1, False)
+        self.set_speed('stop')
 
-    async def forward(self, speed, t_time):
-        self.L_Motor.ChangeDutyCycle(speed)
-        GPIO.output(AIN2, False)
-        GPIO.output(AIN1, True)
-
-        self.R_Motor.ChangeDutyCycle(speed)
-        GPIO.output(BIN2, False)
-        GPIO.output(BIN1, True)
-        if t_time:
-            await asyncio.sleep(t_time)
-        self.stop()
-
-    async def backword(self, speed, t_time):
-        self.L_Motor.ChangeDutyCycle(speed)
-        GPIO.output(AIN2, True)
-        GPIO.output(AIN1, False)
-
-        self.R_Motor.ChangeDutyCycle(speed)
-        GPIO.output(BIN2, True)
-        GPIO.output(BIN1, False)
-        if t_time:
-            await asyncio.sleep(t_time)
-        self.stop()
-
-    async def left(self, speed, t_time):
-        self.L_Motor.ChangeDutyCycle(speed)
-        GPIO.output(AIN2, True)
-        GPIO.output(AIN1, False)
-
-        self.R_Motor.ChangeDutyCycle(speed)
-        GPIO.output(BIN2, False)
-        GPIO.output(BIN1, True)
-        if t_time:
-            await asyncio.sleep(t_time)
-        self.stop()
-
-    async def right(self, speed, t_time):
-        self.L_Motor.ChangeDutyCycle(speed)
+    def forward(self):
         GPIO.output(AIN2, False)
         GPIO.output(AIN1, True)
 
-        self.R_Motor.ChangeDutyCycle(speed)
+        GPIO.output(BIN2, False)
+        GPIO.output(BIN1, True)
+        self.set_speed('forward')
+
+    def backward(self):
+        GPIO.output(AIN2, True)
+        GPIO.output(AIN1, False)
+
         GPIO.output(BIN2, True)
         GPIO.output(BIN1, False)
-        if t_time:
-            await asyncio.sleep(t_time)
-        self.stop()
+        self.set_speed('backward')
+
+    def left(self):
+        GPIO.output(AIN2, True)
+        GPIO.output(AIN1, False)
+
+        GPIO.output(BIN2, False)
+        GPIO.output(BIN1, True)
+        self.set_speed('left')
+
+    def right(self):
+        GPIO.output(AIN2, False)
+        GPIO.output(AIN1, True)
+
+        GPIO.output(BIN2, True)
+        GPIO.output(BIN1, False)
+        self.set_speed('right')
+
+    def delay_stop(self, delay: float):
+        if self.delay_stop_handler:
+            self.delay_stop_handler.cancel()
+        loop = asyncio.get_event_loop()
+        self.delay_stop_handler = loop.call_later(delay, self.stop)
 
 
 car = Car()

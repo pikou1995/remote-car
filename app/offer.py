@@ -1,34 +1,14 @@
 import json
-from camera import camera_device
+from video import RTCVideoTrack
+from audio import RadioTelephoneTrack
 from peerconnection import PeerConnectionFactory, pcs
-from av import VideoFrame, AudioFrame
 from aiohttp import web
 from aiortc import RTCSessionDescription
-from aiortc.mediastreams import AudioStreamTrack, VideoStreamTrack
+from aiortc.contrib.media import MediaPlayer, MediaRelay
+# from aiortc.mediastreams import  VideoStreamTrack
 
 # Factory to create peerConnections depending on the iceServers set by user
 pc_factory = PeerConnectionFactory()
-
-
-class RTCVideoStream(VideoStreamTrack):
-    def __init__(self, camera_device):
-        super().__init__()
-        self.camera_device = camera_device
-        self.data_bgr = None
-
-    async def recv(self):
-        self.data_bgr = await self.camera_device.get_latest_frame()
-        frame = VideoFrame.from_ndarray(self.data_bgr, format='bgr24')
-        pts, time_base = await self.next_timestamp()
-        frame.pts = pts
-        frame.time_base = time_base
-        return frame
-
-
-class RTCAudioStream(AudioStreamTrack):
-    def __init__(self):
-        super().__init__()
-
 
 async def offer(request):
     params = await request.json()
@@ -36,10 +16,14 @@ async def offer(request):
         sdp=params['sdp'],
         type=params['type'])
     pc = pc_factory.create_peer_connection()
+    # options = {'framerate': '30', 'video_size': '640x480'}
+    # webcam = MediaPlayer('/dev/video0', format='v4l2', options=options)
+    # relay = MediaRelay()
     pcs.add(pc)
+    # pc.addTrack(relay.subscribe(webcam.video))
     # Add local media
-    local_video = RTCVideoStream(camera_device)
-    pc.addTrack(local_video)
+    pc.addTrack(RTCVideoTrack())
+    pc.addTrack(RadioTelephoneTrack())
 
     @pc.on('iceconnectionstatechange')
     async def on_iceconnectionstatechange():
