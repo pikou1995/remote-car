@@ -1,43 +1,46 @@
-from av import AudioFrame
-from cv2 import log
-from pydub import AudioSegment
+import asyncio
+import fractions
+from logging import log
+import time
 import pyaudio
 import av
-import fractions
 
-from aiortc.mediastreams import MediaStreamTrack
+from aiortc.mediastreams import AudioStreamTrack
 
 
-class RadioTelephoneTrack(MediaStreamTrack):
-    kind = "audio"
-
+class RTCAudioTrack(AudioStreamTrack):
     def __init__(self):
         super().__init__()  # don't forget this!
 
-        self.AUDIO_PTIME = 0.020  # 20ms audio packetization
-
+        self.AUDIO_PTIME = 0.02
         self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 2
-        self.RATE = 48000
-        self.CHUNK = int(self.RATE * 0.020)
+        self.CHANNELS = 1
+        self.RATE = 16000
+        self.CHUNK = int(self.RATE * self.AUDIO_PTIME)
 
         self.p = pyaudio.PyAudio()
         self.mic_stream = self.p.open(
-            format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True, frames_per_buffer=self.CHUNK)
+            format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True)
 
         self.codec = av.CodecContext.create('pcm_s16le', 'r')
         self.codec.sample_rate = self.RATE
         self.codec.channels = self.CHANNELS
 
-        self.audio_samples = 0
-        self.chunk_number = 0
-
     async def recv(self):
         mic_data = self.mic_stream.read(self.CHUNK)
         packet = av.Packet(mic_data)
         frame = self.codec.decode(packet)[0]
-        frame.pts = self.audio_samples
-        self.audio_samples += frame.samples
-        self.chunk_number = self.chunk_number + 1
-        print('audio', frame)
+
+        if hasattr(self, "_timestamp"):
+            self._timestamp += self.CHUNK
+            wait = self._start + (self._timestamp /
+                                  self.RATE) - time.time()
+            await asyncio.sleep(wait)
+        else:
+            self._start = time.time()
+            self._timestamp = 0
+
+        frame.pts = self._timestamp
+        frame.sample_rate = self.RATE
+        frame.time_base = fractions.Fraction(1, self.RATE)
         return frame

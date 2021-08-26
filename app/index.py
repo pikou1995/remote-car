@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from car import car
 from RPi import GPIO
 from offer import offer
 from peerconnection import pcs
@@ -10,7 +9,6 @@ import platform
 import sys
 from time import sleep
 from aiohttp import web
-import aiohttp
 from aiohttp_basicauth import BasicAuthMiddleware
 
 
@@ -31,40 +29,6 @@ async def on_shutdown(app):
     await asyncio.gather(*coros)
 
 
-async def websocket_handler(request):
-    ws = web.WebSocketResponse()
-    await ws.prepare(request)  # 等待websocket连接
-
-    async for msg in ws:
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            if msg.data == 'close':
-                await ws.close()
-            elif msg.data == 'w':
-                car.forward()
-            elif msg.data == 'a':
-                car.left()
-            elif msg.data == 's':
-                car.backward()
-            elif msg.data == 'd':
-                car.right()
-            elif msg.data == 'i':
-                car.servo.up()
-            elif msg.data == 'j':
-                car.servo.left()
-            elif msg.data == 'k':
-                car.servo.down()
-            elif msg.data == 'l':
-                car.servo.right()
-            else:
-                car.stop()
-            car.delay_stop(0.3)
-        elif msg.type == aiohttp.WSMsgType.ERROR:
-            print('ws connection closed with exception %s' %
-                  ws.exception())
-
-    print('websocket connection closed')
-
-    return ws
 
 
 def checkDeviceReadiness():
@@ -99,5 +63,4 @@ if __name__ == '__main__':
     app.router.add_get('/', index)
     app.router.add_get('/client.js', javascript)
     app.router.add_post('/offer', offer)
-    app.router.add_route('*', '/car', websocket_handler)
     web.run_app(app, port=8080)

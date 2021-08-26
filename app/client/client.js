@@ -77,6 +77,17 @@ function createNewPeerConnection() {
     pc.addEventListener('iceconnectionstatechange', mainIceListener);
     resolve();
   }).then(function () {
+    // car controller
+    var dc = pc.createDataChannel('car');
+    dc.onerror = console.log
+    dc.onclose = console.log
+    dc.onopen = function () {
+      console.log('data channel opened');
+      window.onkeydown = throttle(function (e) {
+        dc.send(e.key);
+      }, 200);
+    }
+  }).then(function () {
     pc.addTransceiver('video', { direction: 'recvonly' });
     pc.addTransceiver('audio', { direction: 'recvonly' });
     return pc.createOffer()
@@ -120,7 +131,7 @@ function createNewPeerConnection() {
   }).catch(function (e) {
     console.error(e);
   });
-  return pc
+  return pc;
 }
 
 // Use on firefox
@@ -251,14 +262,7 @@ function throttle(fn, threshhold) {
   }
 }
 
-// car controller
-var ws = new WebSocket('ws://' + location.host + '/car');
-
-window.onkeydown = throttle(function (e) {
-  ws.send(e.key);
-}, 200);
-
 document.getElementById('audio-btn').onclick = function () {
   this.remove();
-  document.getElementById('video').muted = false;
+  document.getElementById('video').muted = false
 }
