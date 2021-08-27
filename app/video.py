@@ -38,4 +38,3 @@ class RTCVideoTrack(VideoStreamTrack):
         frame.pts = pts
         frame.time_base = time_base
         return frame
-

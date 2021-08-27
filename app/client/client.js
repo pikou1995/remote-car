@@ -83,9 +83,9 @@ function createNewPeerConnection() {
     dc.onclose = console.log
     dc.onopen = function () {
       console.log('data channel opened');
-      window.onkeydown = throttle(function (e) {
+      window.addEventListener('keydown', throttle(function (e) {
         dc.send(e.key);
-      }, 200);
+      }, 200))
     }
   }).then(function () {
     pc.addTransceiver('video', { direction: 'recvonly' });
@@ -262,7 +262,9 @@ function throttle(fn, threshhold) {
   }
 }
 
-document.getElementById('audio-btn').onclick = function () {
-  this.remove();
-  document.getElementById('video').muted = false
+function play() {
+  document.getElementById('video').play();
+  window.removeEventListener('keydown', play);
 }
+window.addEventListener('keydown', play);
+

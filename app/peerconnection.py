@@ -2,6 +2,7 @@ import os
 import json
 from aiortc import RTCPeerConnection, RTCIceServer, RTCConfiguration
 
+
 class PeerConnectionFactory():
     def __init__(self):
         self.config = {'sdpSemantics': 'unified-plan'}

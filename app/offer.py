@@ -11,6 +11,7 @@ from aiortc.contrib.media import MediaPlayer, MediaRelay
 # Factory to create peerConnections depending on the iceServers set by user
 pc_factory = PeerConnectionFactory()
 
+
 async def offer(request):
     params = await request.json()
     offer = RTCSessionDescription(

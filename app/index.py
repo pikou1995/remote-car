@@ -29,8 +29,6 @@ async def on_shutdown(app):
     await asyncio.gather(*coros)
 
 
-
-
 def checkDeviceReadiness():
     if not os.path.exists('/dev/video0') and platform.system() == 'Linux':
         print('Video device is not ready')
